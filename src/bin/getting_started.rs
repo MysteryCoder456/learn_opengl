@@ -3,9 +3,20 @@ extern crate glfw;
 
 use glfw::Context;
 
-fn process_input(window: &mut glfw::Window) {
-    if window.get_key(glfw::Key::Escape) == glfw::Action::Press {
-        window.set_should_close(true);
+fn process_events(
+    window: &mut glfw::Window,
+    events: &glfw::GlfwReceiver<(f64, glfw::WindowEvent)>,
+) {
+    for (_, event) in glfw::flush_messages(events) {
+        match event {
+            glfw::WindowEvent::FramebufferSize(w, h) => unsafe {
+                gl::Viewport(0, 0, w, h);
+            },
+            glfw::WindowEvent::Key(glfw::Key::Escape, _, glfw::Action::Press, _) => {
+                window.set_should_close(true)
+            }
+            _ => {}
+        }
     }
 }
 
@@ -25,17 +36,16 @@ fn main() {
     let (mut window, events) = glfw
         .create_window(800, 600, "Getting Started", glfw::WindowMode::Windowed)
         .expect("GLFW sh*t itself :(");
+
     window.make_current();
+    window.set_key_polling(true);
+    window.set_framebuffer_size_polling(true);
 
     // Load OpenGL function pointers
     gl::load_with(|sym| window.get_proc_address(sym) as *const _);
 
-    unsafe {
-        gl::Viewport(0, 0, 800, 600);
-    }
-
     while !window.should_close() {
-        process_input(&mut window);
+        process_events(&mut window, &events);
 
         // Rendering commands
         unsafe {
