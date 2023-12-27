@@ -194,12 +194,12 @@ fn main() {
 
         // Configure & enable vertex attributes
         gl::VertexAttribPointer(
-            0,
-            3,
-            gl::FLOAT,
-            gl::FALSE,
-            3 * std::mem::size_of::<f32>() as i32,
-            std::ptr::null(),
+            0,                                     // layout location value specified in vertex shader
+            3,                                     // Number of dimensions of input vertex
+            gl::FLOAT,                             // Data type of the vertex
+            gl::FALSE,                             // Normalized?
+            3 * std::mem::size_of::<f32>() as i32, // Stride length
+            std::ptr::null(),                      // Offset value
         );
         gl::EnableVertexAttribArray(0);
 
