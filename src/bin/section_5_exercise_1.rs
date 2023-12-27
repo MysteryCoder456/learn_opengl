@@ -1,3 +1,5 @@
+// Getting Started - Section 5: Hello Triangle - Exercise 1
+
 extern crate gl;
 extern crate glfw;
 
