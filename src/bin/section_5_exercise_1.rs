@@ -223,7 +223,6 @@ fn main() {
             gl::ClearColor(0.2, 0.2, 0.2, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
 
-            // Use our shader program and vertex array to draw a triangle
             gl::UseProgram(shader_program);
             gl::BindVertexArray(vao);
             gl::DrawArrays(gl::TRIANGLES, 0, 3);
