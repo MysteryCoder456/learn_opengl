@@ -92,6 +92,8 @@ fn main() {
         // If compilation failed, get shader info log and print it
         if success == 0 {
             let mut info_buffer = Vec::<u8>::with_capacity(512);
+            info_buffer.set_len(512 - 1);
+
             gl::GetShaderInfoLog(
                 vertex_shader,
                 512,
@@ -128,6 +130,8 @@ fn main() {
         // If compilation failed, get shader info log and print it
         if success == 0 {
             let mut info_buffer = Vec::<u8>::with_capacity(512);
+            info_buffer.set_len(512 - 1);
+
             gl::GetShaderInfoLog(
                 fragment_shader,
                 512,
@@ -157,6 +161,8 @@ fn main() {
         // If linking failed, get program info log and print it
         if success == 0 {
             let mut info_buffer = Vec::<u8>::with_capacity(512);
+            info_buffer.set_len(512 - 1);
+
             gl::GetProgramInfoLog(
                 shader_program,
                 512,
