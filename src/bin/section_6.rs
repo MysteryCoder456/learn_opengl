@@ -13,20 +13,18 @@ const TRIANGLE_VERTICES: [f32; 9] = [0.0, 0.5, 0.0, -0.5, -0.5, 0.0, 0.5, -0.5, 
 
 const VERTEX_SHADER_SOURCE: &str = r"#version 330 core
 layout (location = 0) in vec3 aPos;
-out vec4 vertexColor;
 
 void main() {
     gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
-    vertexColor = vec4(1.0, 0.5, 0.2, 1.0);
 }
 ";
 
 const FRAGMENT_SHADER_SOURCE: &str = r"#version 330 core
-in vec4 vertexColor;
 out vec4 FragColor;
+uniform vec4 ourColor;
 
 void main() {
-    FragColor = vertexColor;
+    FragColor = ourColor;
 }
 ";
 
@@ -41,6 +39,8 @@ unsafe fn compile_shader(shader: GLuint) -> Result<(), String> {
     // Spit back error if did not compile successfully
     if success == 0 {
         let mut info_buffer = Vec::<u8>::with_capacity(INFO_BUFFER_CAPACITY);
+        info_buffer.set_len(512 - 1);
+
         gl::GetShaderInfoLog(
             shader,
             INFO_BUFFER_CAPACITY as i32,
@@ -64,6 +64,8 @@ unsafe fn link_program(program: GLuint) -> Result<(), String> {
     // Spit back error if did not link successfully
     if success == 0 {
         let mut info_buffer = Vec::<u8>::with_capacity(INFO_BUFFER_CAPACITY);
+        info_buffer.set_len(512 - 1);
+
         gl::GetProgramInfoLog(
             program,
             INFO_BUFFER_CAPACITY as i32,
@@ -155,7 +157,7 @@ fn main() {
 
         // Link shader program
         if let Err(e) = link_program(shader_program) {
-            eprintln!("Failed to shader program:\n{}", e);
+            eprintln!("Failed to link shader program:\n{}", e);
         }
 
         // Delete individual shaders
@@ -201,6 +203,11 @@ fn main() {
         vao
     };
 
+    let vertex_color_location = unsafe {
+        let uniform_name = CString::new("ourColor").unwrap();
+        gl::GetUniformLocation(shader_program, uniform_name.as_ptr())
+    };
+
     while !window.should_close() {
         process_events(&mut window, &events);
 
@@ -209,8 +216,14 @@ fn main() {
             gl::ClearColor(0.2, 0.2, 0.2, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
 
-            // Use our shader program and vertex array to draw a triangle
+            // Use our shader program
             gl::UseProgram(shader_program);
+
+            // Set uniform to change triangle color
+            let green_value = glfw.get_time().sin().abs();
+            gl::Uniform4f(vertex_color_location, 1.0, green_value as f32, 0.2, 1.0);
+
+            // Draw the vertex array
             gl::BindVertexArray(vao);
             gl::DrawArrays(gl::TRIANGLES, 0, 3);
         }
