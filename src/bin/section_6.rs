@@ -9,22 +9,30 @@ use gl::types::{GLchar, GLuint};
 use glfw::Context;
 
 const INFO_BUFFER_CAPACITY: usize = 512;
-const TRIANGLE_VERTICES: [f32; 9] = [0.0, 0.5, 0.0, -0.5, -0.5, 0.0, 0.5, -0.5, 0.0];
+
+// Format: 3 floats -> position and next 3 floats -> color
+const TRIANGLE_VERTICES: [f32; 18] = [
+    0.0, 0.5, 0.0, 1.0, 0.0, 0.0, -0.5, -0.5, 0.0, 0.0, 1.0, 0.0, 0.5, -0.5, 0.0, 0.0, 0.0, 1.0,
+];
 
 const VERTEX_SHADER_SOURCE: &str = r"#version 330 core
 layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec3 aColor;
+
+out vec3 ourColor;
 
 void main() {
     gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
+    ourColor = aColor;
 }
 ";
 
 const FRAGMENT_SHADER_SOURCE: &str = r"#version 330 core
+in vec3 ourColor;
 out vec4 FragColor;
-uniform vec4 ourColor;
 
 void main() {
-    FragColor = ourColor;
+    FragColor = vec4(ourColor, 1.0);
 }
 ";
 
@@ -185,19 +193,24 @@ fn main() {
             gl::STATIC_DRAW,
         );
 
-        // Configure & enable vertex attributes
-        gl::VertexAttribPointer(
-            0,                                     // layout location value specified in vertex shader
-            3,                                     // Number of dimensions of input vertex
-            gl::FLOAT,                             // Data type of the vertex
-            gl::FALSE,                             // Normalized?
-            3 * std::mem::size_of::<f32>() as i32, // Stride length
-            std::ptr::null(),                      // Offset value
-        );
+        let stride = 6 * std::mem::size_of::<f32>() as i32;
+
+        // Configure vertex position attributes
+        gl::VertexAttribPointer(0, 3, gl::FLOAT, gl::FALSE, stride, std::ptr::null());
         gl::EnableVertexAttribArray(0);
 
-        // Unbind vertex buffer, then vertex array
-        gl::BindBuffer(gl::ARRAY_BUFFER, 0);
+        // Configure vertex color attributes
+        gl::VertexAttribPointer(
+            1,
+            3,
+            gl::FLOAT,
+            gl::FALSE,
+            stride,
+            (3 * std::mem::size_of::<f32>()) as *const c_void,
+        );
+        gl::EnableVertexAttribArray(1);
+
+        // Unbind vertex array
         gl::BindVertexArray(0);
 
         vao
