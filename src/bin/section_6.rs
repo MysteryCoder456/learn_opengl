@@ -5,7 +5,7 @@ extern crate glfw;
 
 use std::{ffi::CString, os::raw::c_void};
 
-use gl::types::{GLchar, GLuint};
+use gl::types::{GLchar, GLint, GLuint};
 use glfw::Context;
 
 const INFO_BUFFER_CAPACITY: usize = 512;
@@ -15,74 +15,129 @@ const TRIANGLE_VERTICES: [f32; 18] = [
     0.0, 0.5, 0.0, 1.0, 0.0, 0.0, -0.5, -0.5, 0.0, 0.0, 1.0, 0.0, 0.5, -0.5, 0.0, 0.0, 0.0, 1.0,
 ];
 
-const VERTEX_SHADER_SOURCE: &str = r"#version 330 core
-layout (location = 0) in vec3 aPos;
-layout (location = 1) in vec3 aColor;
-
-out vec3 ourColor;
-
-void main() {
-    gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
-    ourColor = aColor;
+struct Shader {
+    program: GLuint,
 }
-";
 
-const FRAGMENT_SHADER_SOURCE: &str = r"#version 330 core
-in vec3 ourColor;
-out vec4 FragColor;
+impl Shader {
+    pub unsafe fn new(
+        vertex_shader_path: &str,
+        fragment_shader_path: &str,
+    ) -> Result<Self, String> {
+        let vertex_source = std::fs::read(vertex_shader_path).map_err(|e| e.to_string())?;
+        let fragment_source = std::fs::read(fragment_shader_path).map_err(|e| e.to_string())?;
 
-void main() {
-    FragColor = vec4(ourColor, 1.0);
-}
-";
+        let vertex_shader_cstr = CString::new(vertex_source).unwrap();
+        let fragment_shader_cstr = CString::new(fragment_source).unwrap();
 
-unsafe fn compile_shader(shader: GLuint) -> Result<(), String> {
-    // Compile shader
-    gl::CompileShader(shader);
-
-    // Check whether compiled successfully
-    let mut success = 0;
-    gl::GetShaderiv(shader, gl::COMPILE_STATUS, &mut success);
-
-    // Spit back error if did not compile successfully
-    if success == 0 {
-        let mut info_buffer = Vec::<u8>::with_capacity(INFO_BUFFER_CAPACITY);
-        info_buffer.set_len(512 - 1);
-
-        gl::GetShaderInfoLog(
-            shader,
-            INFO_BUFFER_CAPACITY as i32,
-            std::ptr::null_mut(),
-            info_buffer.as_mut_ptr() as *mut GLchar,
+        // Create and compile vertex shader
+        let vertex_shader = gl::CreateShader(gl::VERTEX_SHADER);
+        gl::ShaderSource(
+            vertex_shader,
+            1,
+            &vertex_shader_cstr.as_ptr(),
+            std::ptr::null(),
         );
-        Err(std::str::from_utf8(&info_buffer).unwrap().to_owned())
-    } else {
-        Ok(())
+        gl::CompileShader(vertex_shader);
+
+        let mut vertex_success = 0;
+        gl::GetShaderiv(vertex_shader, gl::COMPILE_STATUS, &mut vertex_success);
+
+        // Check for compilation errors
+        let vertex_error = if vertex_success == 0 {
+            let mut info_buffer = Vec::with_capacity(INFO_BUFFER_CAPACITY);
+            info_buffer.set_len(INFO_BUFFER_CAPACITY - 1);
+
+            gl::GetShaderInfoLog(
+                vertex_shader,
+                INFO_BUFFER_CAPACITY as i32,
+                std::ptr::null_mut(),
+                info_buffer.as_mut_ptr() as *mut GLchar,
+            );
+            Some(std::str::from_utf8(&info_buffer).unwrap().to_owned())
+        } else {
+            None
+        };
+
+        // Create and compile fragment shader
+        let fragment_shader = gl::CreateShader(gl::FRAGMENT_SHADER);
+        gl::ShaderSource(
+            fragment_shader,
+            1,
+            &fragment_shader_cstr.as_ptr(),
+            std::ptr::null(),
+        );
+        gl::CompileShader(fragment_shader);
+
+        let mut fragment_success = 0;
+        gl::GetShaderiv(fragment_shader, gl::COMPILE_STATUS, &mut fragment_success);
+
+        // Check for compilation errors
+        let fragment_error = if fragment_success == 0 {
+            let mut info_buffer = Vec::with_capacity(INFO_BUFFER_CAPACITY);
+            info_buffer.set_len(INFO_BUFFER_CAPACITY - 1);
+
+            gl::GetShaderInfoLog(
+                fragment_shader,
+                INFO_BUFFER_CAPACITY as i32,
+                std::ptr::null_mut(),
+                info_buffer.as_mut_ptr() as *mut GLchar,
+            );
+            Some(std::str::from_utf8(&info_buffer).unwrap().to_owned())
+        } else {
+            None
+        };
+
+        // Combine and return both errors if either vertex or fragment shader fails to compile
+        if vertex_error.is_some() || fragment_error.is_some() {
+            gl::DeleteShader(vertex_shader);
+            gl::DeleteShader(fragment_shader);
+
+            let mut final_error = String::new();
+            final_error.push_str(&vertex_error.unwrap_or("".to_owned()));
+            final_error.push_str(&fragment_error.unwrap_or("".to_owned()));
+            return Err(final_error);
+        }
+
+        // Create and link shader program
+        let program = gl::CreateProgram();
+        gl::AttachShader(program, vertex_shader);
+        gl::AttachShader(program, fragment_shader);
+        gl::LinkProgram(program);
+
+        // Delete unneeded shaders
+        gl::DeleteShader(vertex_shader);
+        gl::DeleteShader(fragment_shader);
+
+        let mut link_success = 0;
+        gl::GetProgramiv(program, gl::LINK_STATUS, &mut link_success);
+
+        // Check for linking errors
+        if link_success == 0 {
+            let mut info_buffer = Vec::with_capacity(INFO_BUFFER_CAPACITY);
+            info_buffer.set_len(INFO_BUFFER_CAPACITY - 1);
+
+            gl::GetProgramInfoLog(
+                program,
+                INFO_BUFFER_CAPACITY as i32,
+                std::ptr::null_mut(),
+                info_buffer.as_mut_ptr() as *mut GLchar,
+            );
+
+            gl::DeleteProgram(program);
+            Err(std::str::from_utf8(&info_buffer).unwrap().to_owned())
+        } else {
+            Ok(Self { program })
+        }
     }
-}
 
-unsafe fn link_program(program: GLuint) -> Result<(), String> {
-    // Link program
-    gl::LinkProgram(program);
+    pub unsafe fn use_program(&self) {
+        gl::UseProgram(self.program);
+    }
 
-    // Check whether linked successfully
-    let mut success = 0;
-    gl::GetProgramiv(program, gl::LINK_STATUS, &mut success);
-
-    // Spit back error if did not link successfully
-    if success == 0 {
-        let mut info_buffer = Vec::<u8>::with_capacity(INFO_BUFFER_CAPACITY);
-        info_buffer.set_len(512 - 1);
-
-        gl::GetProgramInfoLog(
-            program,
-            INFO_BUFFER_CAPACITY as i32,
-            std::ptr::null_mut(),
-            info_buffer.as_mut_ptr() as *mut GLchar,
-        );
-        Err(std::str::from_utf8(&info_buffer).unwrap().to_owned())
-    } else {
-        Ok(())
+    pub unsafe fn get_uniform_location(&self, uniform_name: &str) -> GLint {
+        let name = CString::new(uniform_name).unwrap();
+        gl::GetUniformLocation(self.program, name.as_ptr())
     }
 }
 
@@ -128,51 +183,15 @@ fn main() {
     gl::load_with(|sym| window.get_proc_address(sym) as *const _);
 
     let shader_program = unsafe {
-        // Create vertex shader
-        let vertex_shader = gl::CreateShader(gl::VERTEX_SHADER);
-        let vertex_shader_source = CString::new(VERTEX_SHADER_SOURCE.as_bytes()).unwrap();
-        gl::ShaderSource(
-            vertex_shader,
-            1,
-            &vertex_shader_source.as_ptr(),
-            std::ptr::null(),
+        let shader = Shader::new(
+            "shaders/section_6/vertex.glsl",
+            "shaders/section_6/fragment.glsl",
         );
 
-        // Compile vertex shader
-        if let Err(e) = compile_shader(vertex_shader) {
-            eprintln!("Failed to compile vertex shader:\n{}", e);
+        if let Err(e) = shader {
+            panic!("Failed to load shaders:\n{}", e);
         }
-
-        // Create fragment shader
-        let fragment_shader = gl::CreateShader(gl::FRAGMENT_SHADER);
-        let fragment_shader_source = CString::new(FRAGMENT_SHADER_SOURCE.as_bytes()).unwrap();
-        gl::ShaderSource(
-            fragment_shader,
-            1,
-            &fragment_shader_source.as_ptr(),
-            std::ptr::null(),
-        );
-
-        // Compile fragment shader
-        if let Err(e) = compile_shader(fragment_shader) {
-            eprintln!("Failed to compile fragment shader:\n{}", e);
-        }
-
-        // Create shader program
-        let shader_program = gl::CreateProgram();
-        gl::AttachShader(shader_program, vertex_shader);
-        gl::AttachShader(shader_program, fragment_shader);
-
-        // Link shader program
-        if let Err(e) = link_program(shader_program) {
-            eprintln!("Failed to link shader program:\n{}", e);
-        }
-
-        // Delete individual shaders
-        gl::DeleteShader(vertex_shader);
-        gl::DeleteShader(fragment_shader);
-
-        shader_program
+        shader.unwrap()
     };
 
     let vao = unsafe {
@@ -216,10 +235,9 @@ fn main() {
         vao
     };
 
-    let vertex_color_location = unsafe {
-        let uniform_name = CString::new("ourColor").unwrap();
-        gl::GetUniformLocation(shader_program, uniform_name.as_ptr())
-    };
+    //let vertex_color_location = unsafe {
+    //    shader_program.get_uniform_location("vertexColor")
+    //};
 
     while !window.should_close() {
         process_events(&mut window, &events);
@@ -230,11 +248,11 @@ fn main() {
             gl::Clear(gl::COLOR_BUFFER_BIT);
 
             // Use our shader program
-            gl::UseProgram(shader_program);
+            shader_program.use_program();
 
             // Set uniform to change triangle color
-            let green_value = glfw.get_time().sin().abs();
-            gl::Uniform4f(vertex_color_location, 1.0, green_value as f32, 0.2, 1.0);
+            //let green_value = glfw.get_time().sin().abs();
+            //gl::Uniform4f(vertex_color_location, 1.0, green_value as f32, 0.2, 1.0);
 
             // Draw the vertex array
             gl::BindVertexArray(vao);
