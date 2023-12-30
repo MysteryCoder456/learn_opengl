@@ -1,4 +1,4 @@
-// Getting Started - Section 6: Shaders - Exercise 1
+// Getting Started - Section 6: Shaders - Exercise 2
 
 extern crate gl;
 extern crate glfw;
@@ -56,8 +56,8 @@ fn main() {
 
     let shader_program = unsafe {
         let shader = Shader::new(
-            "shaders/section_6_exercise_1/vertex.glsl",
-            "shaders/section_6_exercise_1/fragment.glsl",
+            "shaders/section_6_exercise_2/vertex.glsl",
+            "shaders/section_6_exercise_2/fragment.glsl",
         );
 
         if let Err(e) = shader {
@@ -107,6 +107,8 @@ fn main() {
         vao
     };
 
+    let h_offset_location = unsafe { shader_program.get_uniform_location("hOffset") };
+
     while !window.should_close() {
         process_events(&mut window, &events);
 
@@ -117,6 +119,9 @@ fn main() {
 
             // Use our shader program
             shader_program.use_program();
+
+            let time_value = glfw.get_time() * 0.1;
+            gl::Uniform1f(h_offset_location, time_value as f32);
 
             // Draw the vertex array
             gl::BindVertexArray(vao);
