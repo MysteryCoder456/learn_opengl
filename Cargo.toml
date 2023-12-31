@@ -12,3 +12,4 @@ path = "src/lib.rs"
 [dependencies]
 gl = "0.14"
 glfw = "0.54"
+image = "0.24"
