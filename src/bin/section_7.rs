@@ -88,7 +88,7 @@ fn main() {
         // Configure texture wrapping and filtering options
         gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
         gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
         gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
 
         // Set texture data and generate mipmaps
@@ -103,7 +103,7 @@ fn main() {
             gl::UNSIGNED_BYTE,                   // Data format
             img_bytes.as_ptr() as *const c_void, // Image data
         );
-        gl::GenerateMipmap(texture);
+        gl::GenerateMipmap(gl::TEXTURE_2D);
 
         // Unbind the texture
         gl::BindTexture(gl::TEXTURE_2D, 0);
