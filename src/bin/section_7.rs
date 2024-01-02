@@ -72,12 +72,13 @@ fn main() {
         shader.unwrap()
     };
 
-    let texture = unsafe {
+    let wood_texture = unsafe {
         // Load texture image
         let img = ImageReader::open("assets/textures/container.jpg")
             .expect("Unable to open image file")
             .decode()
-            .unwrap();
+            .unwrap()
+            .flipv();
         let img_bytes = img.as_bytes();
 
         // Generate and bind a new texture
@@ -105,8 +106,42 @@ fn main() {
         );
         gl::GenerateMipmap(gl::TEXTURE_2D);
 
-        // Unbind the texture
-        gl::BindTexture(gl::TEXTURE_2D, 0);
+        texture
+    };
+
+    let smile_texture = unsafe {
+        // Load texture image
+        let img = ImageReader::open("assets/textures/awesomeface.png")
+            .unwrap()
+            .decode()
+            .unwrap()
+            .flipv();
+        let img_bytes = img.as_bytes();
+
+        // Generate and bind a new texture
+        let mut texture = 0;
+        gl::GenTextures(1, &mut texture);
+        gl::BindTexture(gl::TEXTURE_2D, texture);
+
+        // Configure texture wrapping and filtering options
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
+
+        // Set texture data and generate mipmaps
+        gl::TexImage2D(
+            gl::TEXTURE_2D,
+            0,
+            gl::RGB as i32,
+            img.width() as i32,
+            img.height() as i32,
+            0,
+            gl::RGBA,
+            gl::UNSIGNED_BYTE,
+            img_bytes.as_ptr() as *const c_void,
+        );
+        gl::GenerateMipmap(gl::TEXTURE_2D);
 
         texture
     };
@@ -173,6 +208,13 @@ fn main() {
         vao
     };
 
+    unsafe {
+        // Configure texture sampler locations
+        shader_program.use_program();
+        gl::Uniform1i(shader_program.get_uniform_location("texture1"), 0);
+        gl::Uniform1i(shader_program.get_uniform_location("texture2"), 1);
+    }
+
     while !window.should_close() {
         process_events(&mut window, &events);
 
@@ -184,8 +226,13 @@ fn main() {
             // Use our shader program
             shader_program.use_program();
 
-            // Bind our desired texture
-            gl::BindTexture(gl::TEXTURE_2D, texture);
+            // Bind wood container texture first
+            gl::ActiveTexture(gl::TEXTURE0);
+            gl::BindTexture(gl::TEXTURE_2D, wood_texture);
+
+            // Bind smile texture second
+            gl::ActiveTexture(gl::TEXTURE1);
+            gl::BindTexture(gl::TEXTURE_2D, smile_texture);
 
             // Draw the vertex array
             gl::BindVertexArray(vao);
