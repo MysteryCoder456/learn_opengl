@@ -198,32 +198,25 @@ fn main() {
         vao
     };
 
-    let mut transform = nalgebra_glm::Mat4::identity();
-    transform = nalgebra_glm::rotate(
-        &transform,
-        (90.0 as f32).to_radians(),
-        &nalgebra_glm::vec3(0.0, 0.0, 1.0),
-    );
-    transform = nalgebra_glm::scale(&transform, &nalgebra_glm::vec3(0.5, 0.5, 0.5));
-
     // Set initial uniform values
     unsafe {
         // Configure texture sampler locations
         shader_program.use_program();
         gl::Uniform1i(shader_program.get_uniform_location("texture1"), 0);
         gl::Uniform1i(shader_program.get_uniform_location("texture2"), 1);
-
-        // Configure transform location
-        gl::UniformMatrix4fv(
-            shader_program.get_uniform_location("transform"),
-            1,
-            gl::FALSE,
-            nalgebra_glm::value_ptr(&transform).as_ptr() as *const GLfloat,
-        );
     }
 
     while !window.should_close() {
         process_events(&mut window, &events);
+
+        // Calculate transformation matrix
+        let mut transform = nalgebra_glm::Mat4::identity();
+        transform = nalgebra_glm::translate(&transform, &nalgebra_glm::vec3(0.5, -0.5, 0.0));
+        transform = nalgebra_glm::rotate(
+            &transform,
+            glfw.get_time() as f32,
+            &nalgebra_glm::vec3(0.0, 0.0, 1.0),
+        );
 
         // Rendering commands
         unsafe {
@@ -232,6 +225,14 @@ fn main() {
 
             // Use our shader program
             shader_program.use_program();
+
+            // Configure transform location
+            gl::UniformMatrix4fv(
+                shader_program.get_uniform_location("transform"),
+                1,
+                gl::FALSE,
+                nalgebra_glm::value_ptr(&transform).as_ptr() as *const GLfloat,
+            );
 
             // Bind wood container texture first
             gl::ActiveTexture(gl::TEXTURE0);
