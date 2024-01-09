@@ -11,14 +11,33 @@ use image::io::Reader as ImageReader;
 use learn_opengl::Shader;
 
 #[rustfmt::skip]
-const TRIANGLE_VERTICES: [f32; 20] = [
-    //   position   |  texture coords
-    -0.5,  0.5, 0.0,     0.0, 1.0,
-     0.5,  0.5, 0.0,     1.0, 1.0,
-     0.5, -0.5, 0.0,     1.0, 0.0,
-    -0.5, -0.5, 0.0,     0.0, 0.0,
+const TRIANGLE_VERTICES: [f32; 40] = [
+    //    position   |  texture coords
+    -0.5,  0.5, -0.5,     0.0, 1.0,
+     0.5,  0.5, -0.5,     1.0, 0.0,
+     0.5, -0.5, -0.5,     1.0, 1.0,
+    -0.5, -0.5, -0.5,     0.0, 0.0,
+    -0.5,  0.5,  0.5,     1.0, 1.0,
+     0.5,  0.5,  0.5,     0.0, 0.0,
+     0.5, -0.5,  0.5,     0.0, 1.0,
+    -0.5, -0.5,  0.5,     1.0, 0.0,
 ];
-const TRIANGLE_ELEMENTS: [u32; 6] = [0, 1, 2, 0, 2, 3];
+
+#[rustfmt::skip]
+const TRIANGLE_ELEMENTS: [u32; 36] = [
+    0, 1, 2,
+    0, 2, 3,
+    4, 5, 6,
+    4, 6, 7,
+    0, 4, 5,
+    0, 5, 1,
+    0, 4, 7,
+    0, 7, 3,
+    3, 7, 6,
+    3, 6, 2,
+    1, 5, 6,
+    1, 6, 2,
+];
 
 fn process_events(
     window: &mut glfw::Window,
@@ -60,6 +79,11 @@ fn main() {
 
     // Load OpenGL function pointers
     gl::load_with(|sym| window.get_proc_address(sym) as *const _);
+
+    // Enable depth testing
+    unsafe {
+        gl::Enable(gl::DEPTH_TEST);
+    }
 
     let shader_program = unsafe {
         let shader = Shader::new(
@@ -222,7 +246,7 @@ fn main() {
         let mut model = nalgebra_glm::Mat4::identity();
         model = nalgebra_glm::rotate(
             &model,
-            (-55.0 as f32).to_radians(),
+            glfw.get_time() as f32,
             &nalgebra_glm::vec3(1.0, 0.0, 0.0),
         );
 
@@ -242,7 +266,7 @@ fn main() {
         // Rendering commands
         unsafe {
             gl::ClearColor(0.2, 0.2, 0.2, 1.0);
-            gl::Clear(gl::COLOR_BUFFER_BIT);
+            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
             // Use our shader program
             shader_program.use_program();
@@ -277,7 +301,7 @@ fn main() {
 
             // Draw the vertex array
             gl::BindVertexArray(vao);
-            gl::DrawElements(gl::TRIANGLES, 6, gl::UNSIGNED_INT, 0 as *const c_void);
+            gl::DrawElements(gl::TRIANGLES, 36, gl::UNSIGNED_INT, 0 as *const c_void);
         }
 
         window.swap_buffers();
