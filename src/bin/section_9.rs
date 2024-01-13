@@ -247,7 +247,7 @@ fn main() {
         model = nalgebra_glm::rotate(
             &model,
             glfw.get_time() as f32,
-            &nalgebra_glm::vec3(1.0, 0.0, 0.0),
+            &nalgebra_glm::vec3(0.5, 1.0, 0.0),
         );
 
         // View transform
