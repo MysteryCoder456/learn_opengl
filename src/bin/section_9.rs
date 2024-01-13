@@ -39,6 +39,19 @@ const TRIANGLE_ELEMENTS: [u32; 36] = [
     1, 6, 2,
 ];
 
+const CUBE_POSITIONS: [nalgebra_glm::Vec3; 10] = [
+    nalgebra_glm::Vec3::new(0.0, 0.0, 0.0),
+    nalgebra_glm::Vec3::new(2.0, 5.0, -15.0),
+    nalgebra_glm::Vec3::new(-1.5, -2.2, -2.5),
+    nalgebra_glm::Vec3::new(-3.8, -2.0, -12.3),
+    nalgebra_glm::Vec3::new(2.4, -0.4, -3.5),
+    nalgebra_glm::Vec3::new(-1.7, 3.0, -7.5),
+    nalgebra_glm::Vec3::new(1.3, -2.0, -2.5),
+    nalgebra_glm::Vec3::new(1.5, 2.0, -2.5),
+    nalgebra_glm::Vec3::new(1.5, 0.2, -1.5),
+    nalgebra_glm::Vec3::new(-1.3, 1.0, -1.5),
+];
+
 fn process_events(
     window: &mut glfw::Window,
     events: &glfw::GlfwReceiver<(f64, glfw::WindowEvent)>,
@@ -242,14 +255,6 @@ fn main() {
     while !window.should_close() {
         process_events(&mut window, &events);
 
-        // Model transform
-        let mut model = nalgebra_glm::Mat4::identity();
-        model = nalgebra_glm::rotate(
-            &model,
-            glfw.get_time() as f32,
-            &nalgebra_glm::vec3(0.5, 1.0, 0.0),
-        );
-
         // View transform
         let mut view = nalgebra_glm::Mat4::identity();
         view = nalgebra_glm::translate(&view, &nalgebra_glm::vec3(0.0, 0.0, -3.0));
@@ -273,12 +278,6 @@ fn main() {
 
             // Set transform uniform locations
             gl::UniformMatrix4fv(
-                model_location,
-                1,
-                gl::FALSE,
-                nalgebra_glm::value_ptr(&model).as_ptr() as *const GLfloat,
-            );
-            gl::UniformMatrix4fv(
                 view_location,
                 1,
                 gl::FALSE,
@@ -299,9 +298,30 @@ fn main() {
             gl::ActiveTexture(gl::TEXTURE1);
             gl::BindTexture(gl::TEXTURE_2D, smile_texture);
 
-            // Draw the vertex array
+            // Bind vertex array
             gl::BindVertexArray(vao);
-            gl::DrawElements(gl::TRIANGLES, 36, gl::UNSIGNED_INT, 0 as *const c_void);
+
+            for (i, pos) in CUBE_POSITIONS.iter().enumerate() {
+                // Create model transform
+                let mut model = nalgebra_glm::Mat4::identity();
+                model = nalgebra_glm::translate(&model, &pos);
+                model = nalgebra_glm::rotate(
+                    &model,
+                    (20 * i) as f32,
+                    &(nalgebra_glm::vec3(0.5, 1.0, 0.0)),
+                );
+
+                // Set model transform
+                gl::UniformMatrix4fv(
+                    model_location,
+                    1,
+                    gl::FALSE,
+                    nalgebra_glm::value_ptr(&model).as_ptr() as *const GLfloat,
+                );
+
+                // Draw cube
+                gl::DrawElements(gl::TRIANGLES, 36, gl::UNSIGNED_INT, 0 as *const c_void);
+            }
         }
 
         window.swap_buffers();
