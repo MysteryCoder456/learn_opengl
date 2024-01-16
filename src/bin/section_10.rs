@@ -22,7 +22,6 @@ const TRIANGLE_VERTICES: [f32; 40] = [
      0.5, -0.5,  0.5,     0.0, 1.0,
     -0.5, -0.5,  0.5,     1.0, 0.0,
 ];
-
 #[rustfmt::skip]
 const TRIANGLE_ELEMENTS: [u32; 36] = [
     0, 1, 2,
@@ -52,9 +51,19 @@ const CUBE_POSITIONS: [nalgebra_glm::Vec3; 10] = [
     nalgebra_glm::Vec3::new(-1.3, 1.0, -1.5),
 ];
 
+const CAMERA_SPEED: f32 = 2.5;
+
+struct Camera {
+    position: nalgebra_glm::Vec3,
+    front: nalgebra_glm::Vec3,
+    up: nalgebra_glm::Vec3,
+}
+
 fn process_events(
     window: &mut glfw::Window,
     events: &glfw::GlfwReceiver<(f64, glfw::WindowEvent)>,
+    delta_time: f32,
+    camera: &mut Camera,
 ) {
     for (_, event) in glfw::flush_messages(events) {
         match event {
@@ -66,6 +75,16 @@ fn process_events(
             }
             _ => {}
         }
+    }
+
+    if window.get_key(glfw::Key::W) == glfw::Action::Press {
+        camera.position += camera.front * CAMERA_SPEED * delta_time;
+    } else if window.get_key(glfw::Key::S) == glfw::Action::Press {
+        camera.position -= camera.front * CAMERA_SPEED * delta_time;
+    } else if window.get_key(glfw::Key::A) == glfw::Action::Press {
+        camera.position -= camera.front.cross(&camera.up) * CAMERA_SPEED * delta_time;
+    } else if window.get_key(glfw::Key::D) == glfw::Action::Press {
+        camera.position += camera.front.cross(&camera.up) * CAMERA_SPEED * delta_time;
     }
 }
 
@@ -252,17 +271,27 @@ fn main() {
         )
     };
 
+    let mut last_frame = 0.0;
+
+    let mut camera = Camera {
+        position: nalgebra_glm::vec3(0.0, 0.0, 3.0),
+        front: nalgebra_glm::vec3(0.0, 0.0, -1.0),
+        up: nalgebra_glm::vec3(0.0, 1.0, 0.0),
+    };
+
     while !window.should_close() {
-        process_events(&mut window, &events);
+        // Calculate delta time
+        let current_frame = glfw.get_time() as f32;
+        let delta_time = current_frame - last_frame;
+        last_frame = current_frame;
+
+        process_events(&mut window, &events, delta_time, &mut camera);
 
         // View transform
-        let radius = 10.0;
-        let x = glfw.get_time().sin() as f32 * radius;
-        let z = glfw.get_time().cos() as f32 * radius;
         let view = nalgebra_glm::look_at(
-            &nalgebra_glm::vec3(x, 0.0, z),
-            &nalgebra_glm::vec3(0.0, 0.0, 0.0),
-            &nalgebra_glm::vec3(0.0, 1.0, 0.0),
+            &camera.position,
+            &(camera.position + camera.front),
+            &camera.up,
         );
 
         // Projection transform
