@@ -82,9 +82,13 @@ fn process_events(
     } else if window.get_key(glfw::Key::S) == glfw::Action::Press {
         camera.position -= camera.front * CAMERA_SPEED * delta_time;
     } else if window.get_key(glfw::Key::A) == glfw::Action::Press {
-        camera.position -= camera.front.cross(&camera.up) * CAMERA_SPEED * delta_time;
+        camera.position -= camera.front.cross(&camera.up).normalize() * CAMERA_SPEED * delta_time;
     } else if window.get_key(glfw::Key::D) == glfw::Action::Press {
-        camera.position += camera.front.cross(&camera.up) * CAMERA_SPEED * delta_time;
+        camera.position += camera.front.cross(&camera.up).normalize() * CAMERA_SPEED * delta_time;
+    } else if window.get_key(glfw::Key::Space) == glfw::Action::Press {
+        camera.position += camera.up * CAMERA_SPEED * delta_time;
+    } else if window.get_key(glfw::Key::LeftShift) == glfw::Action::Press {
+        camera.position -= camera.up * CAMERA_SPEED * delta_time;
     }
 }
 
