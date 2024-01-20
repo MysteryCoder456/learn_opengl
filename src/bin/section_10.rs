@@ -65,6 +65,7 @@ fn process_events(
     last_mouse_y: &mut f32,
     yaw: &mut f32,
     pitch: &mut f32,
+    fov: &mut f32,
 ) {
     for (_, event) in glfw::flush_messages(events) {
         match event {
@@ -90,6 +91,9 @@ fn process_events(
                     yaw.to_radians().sin() * cos_pitch,
                 );
                 *camera_front = direction.normalize();
+            }
+            glfw::WindowEvent::Scroll(_, y_offset) => {
+                *fov = (*fov + y_offset as f32).clamp(5.0, 120.0);
             }
             _ => {}
         }
@@ -134,6 +138,9 @@ fn main() {
     // Capture mouse and set mouse polling
     window.set_cursor_mode(glfw::CursorMode::Disabled);
     window.set_cursor_pos_polling(true);
+
+    // Set scroll polling
+    window.set_scroll_polling(true);
 
     // Load OpenGL function pointers
     gl::load_with(|sym| window.get_proc_address(sym) as *const _);
@@ -302,6 +309,7 @@ fn main() {
     let mut camera_position = nalgebra_glm::vec3(0.0, 0.0, 3.0);
     let mut camera_front = nalgebra_glm::vec3(0.0, 0.0, -1.0);
     let camera_up = nalgebra_glm::vec3(0.0, 1.0, 0.0);
+    let mut camera_fov = 60.0;
 
     let mut last_mouse_x = 0.0;
     let mut last_mouse_y = 0.0;
@@ -326,6 +334,7 @@ fn main() {
             &mut last_mouse_y,
             &mut yaw,
             &mut pitch,
+            &mut camera_fov,
         );
 
         // View transform
@@ -339,7 +348,7 @@ fn main() {
         let window_size = window.get_size();
         let projection = nalgebra_glm::perspective(
             window_size.0 as f32 / window_size.1 as f32,
-            (60.0 as f32).to_radians(),
+            camera_fov.to_radians(),
             0.1,
             100.0,
         );
