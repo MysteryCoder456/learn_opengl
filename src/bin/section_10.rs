@@ -52,18 +52,19 @@ const CUBE_POSITIONS: [nalgebra_glm::Vec3; 10] = [
 ];
 
 const CAMERA_SPEED: f32 = 2.5;
-
-struct Camera {
-    position: nalgebra_glm::Vec3,
-    front: nalgebra_glm::Vec3,
-    up: nalgebra_glm::Vec3,
-}
+const MOUSE_SENSITIVITY: f32 = 0.2;
 
 fn process_events(
     window: &mut glfw::Window,
     events: &glfw::GlfwReceiver<(f64, glfw::WindowEvent)>,
     delta_time: f32,
-    camera: &mut Camera,
+    camera_position: &mut nalgebra_glm::Vec3,
+    camera_front: &mut nalgebra_glm::Vec3,
+    camera_up: &nalgebra_glm::Vec3,
+    last_mouse_x: &mut f32,
+    last_mouse_y: &mut f32,
+    yaw: &mut f32,
+    pitch: &mut f32,
 ) {
     for (_, event) in glfw::flush_messages(events) {
         match event {
@@ -73,22 +74,39 @@ fn process_events(
             glfw::WindowEvent::Key(glfw::Key::Escape, _, glfw::Action::Press, _) => {
                 window.set_should_close(true)
             }
+            glfw::WindowEvent::CursorPos(x_pos, y_pos) => {
+                let dx = x_pos as f32 - *last_mouse_x;
+                let dy = *last_mouse_y - y_pos as f32;
+                *last_mouse_x = x_pos as f32;
+                *last_mouse_y = y_pos as f32;
+
+                *yaw += dx * MOUSE_SENSITIVITY;
+                *pitch = (*pitch + dy * MOUSE_SENSITIVITY).clamp(-89.0, 89.0);
+
+                let cos_pitch = pitch.to_radians().cos();
+                let direction = nalgebra_glm::vec3(
+                    yaw.to_radians().cos() * cos_pitch,
+                    pitch.to_radians().sin(),
+                    yaw.to_radians().sin() * cos_pitch,
+                );
+                *camera_front = direction.normalize();
+            }
             _ => {}
         }
     }
 
     if window.get_key(glfw::Key::W) == glfw::Action::Press {
-        camera.position += camera.front * CAMERA_SPEED * delta_time;
+        *camera_position += *camera_front * CAMERA_SPEED * delta_time;
     } else if window.get_key(glfw::Key::S) == glfw::Action::Press {
-        camera.position -= camera.front * CAMERA_SPEED * delta_time;
+        *camera_position -= *camera_front * CAMERA_SPEED * delta_time;
     } else if window.get_key(glfw::Key::A) == glfw::Action::Press {
-        camera.position -= camera.front.cross(&camera.up).normalize() * CAMERA_SPEED * delta_time;
+        *camera_position -= camera_front.cross(camera_up).normalize() * CAMERA_SPEED * delta_time;
     } else if window.get_key(glfw::Key::D) == glfw::Action::Press {
-        camera.position += camera.front.cross(&camera.up).normalize() * CAMERA_SPEED * delta_time;
+        *camera_position += camera_front.cross(camera_up).normalize() * CAMERA_SPEED * delta_time;
     } else if window.get_key(glfw::Key::Space) == glfw::Action::Press {
-        camera.position += camera.up * CAMERA_SPEED * delta_time;
+        *camera_position += *camera_up * CAMERA_SPEED * delta_time;
     } else if window.get_key(glfw::Key::LeftShift) == glfw::Action::Press {
-        camera.position -= camera.up * CAMERA_SPEED * delta_time;
+        *camera_position -= *camera_up * CAMERA_SPEED * delta_time;
     }
 }
 
@@ -112,6 +130,10 @@ fn main() {
     window.make_current();
     window.set_key_polling(true);
     window.set_framebuffer_size_polling(true);
+
+    // Capture mouse and set mouse polling
+    window.set_cursor_mode(glfw::CursorMode::Disabled);
+    window.set_cursor_pos_polling(true);
 
     // Load OpenGL function pointers
     gl::load_with(|sym| window.get_proc_address(sym) as *const _);
@@ -277,11 +299,15 @@ fn main() {
 
     let mut last_frame = 0.0;
 
-    let mut camera = Camera {
-        position: nalgebra_glm::vec3(0.0, 0.0, 3.0),
-        front: nalgebra_glm::vec3(0.0, 0.0, -1.0),
-        up: nalgebra_glm::vec3(0.0, 1.0, 0.0),
-    };
+    let mut camera_position = nalgebra_glm::vec3(0.0, 0.0, 3.0);
+    let mut camera_front = nalgebra_glm::vec3(0.0, 0.0, -1.0);
+    let camera_up = nalgebra_glm::vec3(0.0, 1.0, 0.0);
+
+    let mut last_mouse_x = 0.0;
+    let mut last_mouse_y = 0.0;
+
+    let mut yaw = 0.0;
+    let mut pitch = 0.0;
 
     while !window.should_close() {
         // Calculate delta time
@@ -289,20 +315,31 @@ fn main() {
         let delta_time = current_frame - last_frame;
         last_frame = current_frame;
 
-        process_events(&mut window, &events, delta_time, &mut camera);
+        process_events(
+            &mut window,
+            &events,
+            delta_time,
+            &mut camera_position,
+            &mut camera_front,
+            &camera_up,
+            &mut last_mouse_x,
+            &mut last_mouse_y,
+            &mut yaw,
+            &mut pitch,
+        );
 
         // View transform
         let view = nalgebra_glm::look_at(
-            &camera.position,
-            &(camera.position + camera.front),
-            &camera.up,
+            &camera_position,
+            &(camera_position + camera_front),
+            &camera_up,
         );
 
         // Projection transform
         let window_size = window.get_size();
         let projection = nalgebra_glm::perspective(
             window_size.0 as f32 / window_size.1 as f32,
-            (45.0 as f32).to_radians(),
+            (60.0 as f32).to_radians(),
             0.1,
             100.0,
         );
