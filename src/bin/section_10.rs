@@ -8,7 +8,7 @@ use std::os::raw::c_void;
 use gl::types::GLfloat;
 use glfw::Context;
 use image::io::Reader as ImageReader;
-use learn_opengl::Shader;
+use learn_opengl::{Camera, Shader};
 
 #[rustfmt::skip]
 const TRIANGLE_VERTICES: [f32; 40] = [
@@ -58,14 +58,9 @@ fn process_events(
     window: &mut glfw::Window,
     events: &glfw::GlfwReceiver<(f64, glfw::WindowEvent)>,
     delta_time: f32,
-    camera_position: &mut nalgebra_glm::Vec3,
-    camera_front: &mut nalgebra_glm::Vec3,
-    camera_up: &nalgebra_glm::Vec3,
     last_mouse_x: &mut f32,
     last_mouse_y: &mut f32,
-    yaw: &mut f32,
-    pitch: &mut f32,
-    fov: &mut f32,
+    camera: &mut Camera,
 ) {
     for (_, event) in glfw::flush_messages(events) {
         match event {
@@ -81,36 +76,21 @@ fn process_events(
                 *last_mouse_x = x_pos as f32;
                 *last_mouse_y = y_pos as f32;
 
-                *yaw += dx * MOUSE_SENSITIVITY;
-                *pitch = (*pitch + dy * MOUSE_SENSITIVITY).clamp(-89.0, 89.0);
-
-                let cos_pitch = pitch.to_radians().cos();
-                let direction = nalgebra_glm::vec3(
-                    yaw.to_radians().cos() * cos_pitch,
-                    pitch.to_radians().sin(),
-                    yaw.to_radians().sin() * cos_pitch,
-                );
-                *camera_front = direction.normalize();
+                camera.look_around(dx * MOUSE_SENSITIVITY, dy * MOUSE_SENSITIVITY);
             }
-            glfw::WindowEvent::Scroll(_, y_offset) => {
-                *fov = (*fov + y_offset as f32).clamp(5.0, 120.0);
-            }
+            glfw::WindowEvent::Scroll(_, y_offset) => camera.zoom(y_offset as f32),
             _ => {}
         }
     }
 
     if window.get_key(glfw::Key::W) == glfw::Action::Press {
-        *camera_position += *camera_front * CAMERA_SPEED * delta_time;
+        camera.move_front(CAMERA_SPEED * delta_time);
     } else if window.get_key(glfw::Key::S) == glfw::Action::Press {
-        *camera_position -= *camera_front * CAMERA_SPEED * delta_time;
+        camera.move_front(-CAMERA_SPEED * delta_time);
     } else if window.get_key(glfw::Key::A) == glfw::Action::Press {
-        *camera_position -= camera_front.cross(camera_up).normalize() * CAMERA_SPEED * delta_time;
+        camera.move_side(-CAMERA_SPEED * delta_time);
     } else if window.get_key(glfw::Key::D) == glfw::Action::Press {
-        *camera_position += camera_front.cross(camera_up).normalize() * CAMERA_SPEED * delta_time;
-    } else if window.get_key(glfw::Key::Space) == glfw::Action::Press {
-        *camera_position += *camera_up * CAMERA_SPEED * delta_time;
-    } else if window.get_key(glfw::Key::LeftShift) == glfw::Action::Press {
-        *camera_position -= *camera_up * CAMERA_SPEED * delta_time;
+        camera.move_side(CAMERA_SPEED * delta_time);
     }
 }
 
@@ -306,16 +286,10 @@ fn main() {
 
     let mut last_frame = 0.0;
 
-    let mut camera_position = nalgebra_glm::vec3(0.0, 0.0, 3.0);
-    let mut camera_front = nalgebra_glm::vec3(0.0, 0.0, -1.0);
-    let camera_up = nalgebra_glm::vec3(0.0, 1.0, 0.0);
-    let mut camera_fov = 60.0;
-
     let mut last_mouse_x = 0.0;
     let mut last_mouse_y = 0.0;
 
-    let mut yaw = 0.0;
-    let mut pitch = 0.0;
+    let mut camera = Camera::new(nalgebra_glm::vec3(0.0, 0.0, 3.0), 60.0, -90.0, 0.0);
 
     while !window.should_close() {
         // Calculate delta time
@@ -327,28 +301,19 @@ fn main() {
             &mut window,
             &events,
             delta_time,
-            &mut camera_position,
-            &mut camera_front,
-            &camera_up,
             &mut last_mouse_x,
             &mut last_mouse_y,
-            &mut yaw,
-            &mut pitch,
-            &mut camera_fov,
+            &mut camera,
         );
 
         // View transform
-        let view = nalgebra_glm::look_at(
-            &camera_position,
-            &(camera_position + camera_front),
-            &camera_up,
-        );
+        let view = camera.look_at_matrix();
 
         // Projection transform
         let window_size = window.get_size();
         let projection = nalgebra_glm::perspective(
             window_size.0 as f32 / window_size.1 as f32,
-            camera_fov.to_radians(),
+            camera.fov().to_radians(),
             0.1,
             100.0,
         );
