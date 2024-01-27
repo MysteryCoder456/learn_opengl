@@ -26,6 +26,34 @@ impl Camera {
         nalgebra_glm::look_at(&self.position, &(self.position + self.front), &self.up)
     }
 
+    pub fn look_at_custom(&self) -> nalgebra_glm::Mat4 {
+        let right = self.front.cross(&self.up).normalize();
+        let direction = -self.front;
+        let up = direction.cross(&right).normalize();
+
+        let rotation = nalgebra_glm::mat4(
+            right.x,
+            right.y,
+            right.z,
+            0.0,
+            up.x,
+            up.y,
+            up.z,
+            0.0,
+            direction.x,
+            direction.y,
+            direction.z,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+        );
+        let translate = nalgebra_glm::translate(&nalgebra_glm::identity(), &(-self.position));
+
+        rotation * translate
+    }
+
     pub fn fov(&self) -> f32 {
         self.fov
     }
