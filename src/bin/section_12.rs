@@ -169,7 +169,7 @@ fn main() {
 
     let camera = Camera::new(glm::vec3(0.0, 1.0, 3.0), 45.0, -90.0, -10.0);
 
-    let light_pos = glm::vec3(1.0, 0.0, 0.0);
+    let light_pos = glm::vec3(4.0, 3.0, -6.0);
     let cube_pos = glm::vec3(0.0, 0.0, 0.0);
 
     while !window.should_close() {
