@@ -6,8 +6,8 @@ extern crate glfw;
 use std::ffi::c_void;
 
 use glfw::{
-    Action, Context, GlfwReceiver, Key, OpenGlProfileHint, PWindow, WindowEvent, WindowHint,
-    WindowMode,
+    Action, Context, CursorMode, GlfwReceiver, Key, OpenGlProfileHint, PWindow, WindowEvent,
+    WindowHint, WindowMode,
 };
 use learn_opengl::{Camera, Shader};
 use nalgebra_glm as glm;
@@ -58,15 +58,45 @@ const CUBE_VERTICES: [f32; 180] = [
     -0.5,  0.5, -0.5,  0.0, 1.0
 ];
 
-fn process_events(events: &GlfwReceiver<(f64, WindowEvent)>, window: &mut PWindow) {
+const MOUSE_SENSITIVITY: f32 = 0.2;
+const CAMERA_SPEED: f32 = 4.0;
+
+fn process_events(
+    events: &GlfwReceiver<(f64, WindowEvent)>,
+    window: &mut PWindow,
+    delta_time: f32,
+    last_mouse_x: &mut f32,
+    last_mouse_y: &mut f32,
+    camera: &mut Camera,
+) {
     for (_, event) in glfw::flush_messages(events) {
         match event {
             WindowEvent::FramebufferSize(w, h) => unsafe {
                 gl::Viewport(0, 0, w, h);
             },
             WindowEvent::Key(Key::Escape, _, Action::Press, _) => window.set_should_close(true),
+            WindowEvent::CursorPos(x_pos, y_pos) => {
+                let dx = (x_pos as f32 - *last_mouse_x) * MOUSE_SENSITIVITY;
+                let dy = -(y_pos as f32 - *last_mouse_y) * MOUSE_SENSITIVITY;
+
+                *last_mouse_x = x_pos as f32;
+                *last_mouse_y = y_pos as f32;
+
+                camera.look_around(dx, dy);
+            }
+            WindowEvent::Scroll(_, offset) => camera.zoom(offset as f32),
             _ => {}
         }
+    }
+
+    if window.get_key(glfw::Key::W) == glfw::Action::Press {
+        camera.move_front(CAMERA_SPEED * delta_time);
+    } else if window.get_key(glfw::Key::S) == glfw::Action::Press {
+        camera.move_front(-CAMERA_SPEED * delta_time);
+    } else if window.get_key(glfw::Key::A) == glfw::Action::Press {
+        camera.move_side(-CAMERA_SPEED * delta_time);
+    } else if window.get_key(glfw::Key::D) == glfw::Action::Press {
+        camera.move_side(CAMERA_SPEED * delta_time);
     }
 }
 
@@ -85,6 +115,9 @@ fn main() {
     window.make_current();
     window.set_framebuffer_size_polling(true);
     window.set_key_polling(true);
+    window.set_cursor_pos_polling(true);
+    window.set_cursor_mode(CursorMode::Disabled);
+    window.set_scroll_polling(true);
 
     // Load OpenGL function pointers
     gl::load_with(|s| window.get_proc_address(s));
@@ -167,14 +200,30 @@ fn main() {
         vao
     };
 
-    let camera = Camera::new(glm::vec3(0.0, 1.0, 3.0), 45.0, -90.0, -10.0);
+    let mut camera = Camera::new(glm::vec3(0.0, 1.0, 3.0), 60.0, -90.0, -10.0);
 
-    let light_pos = glm::vec3(4.0, 3.0, -6.0);
-    let cube_pos = glm::vec3(0.0, 0.0, 0.0);
+    let light_pos = glm::vec3(1.2, 1.0, -2.0);
+    let cube_pos = glm::vec3(-1.0, -1.0, -1.0);
+
+    let mut last_mouse_x = 0.0;
+    let mut last_mouse_y = 0.0;
+
+    let mut last_frame = glfw.get_time();
 
     while !window.should_close() {
+        let now = glfw.get_time();
+        let delta_time = (now - last_frame) as f32;
+        last_frame = now;
+
         // Process window events
-        process_events(&events, &mut window);
+        process_events(
+            &events,
+            &mut window,
+            delta_time,
+            &mut last_mouse_x,
+            &mut last_mouse_y,
+            &mut camera,
+        );
 
         let mut light_model = glm::Mat4::identity();
         light_model = glm::translate(&light_model, &light_pos);
@@ -187,7 +236,7 @@ fn main() {
         let window_size = window.get_size();
         let projection = glm::perspective(
             window_size.0 as f32 / window_size.1 as f32,
-            camera.fov(),
+            camera.fov().to_radians(),
             0.1,
             100.0,
         );
@@ -221,10 +270,16 @@ fn main() {
             cube_shader.use_program();
 
             gl::Uniform3f(
-                cube_shader.get_uniform_location("cubeColor"),
-                0.972,
-                0.514,
-                0.475,
+                cube_shader.get_uniform_location("objectColor"),
+                1.0,
+                0.5,
+                0.31,
+            );
+            gl::Uniform3f(
+                cube_shader.get_uniform_location("lightColor"),
+                1.0,
+                1.0,
+                1.0,
             );
 
             gl::UniformMatrix4fv(
@@ -249,7 +304,7 @@ fn main() {
 
         // Rendering commands
         unsafe {
-            gl::ClearColor(0.2, 0.2, 0.2, 1.0);
+            gl::ClearColor(0.1, 0.1, 0.1, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
             // Draw light source
