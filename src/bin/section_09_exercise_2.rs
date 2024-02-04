@@ -100,8 +100,8 @@ fn main() {
 
     let shader_program = unsafe {
         let shader = Shader::new(
-            "shaders/section_9/vertex.glsl",
-            "shaders/section_9/fragment.glsl",
+            "shaders/section_09/vertex.glsl",
+            "shaders/section_09/fragment.glsl",
         );
 
         if let Err(e) = shader {
