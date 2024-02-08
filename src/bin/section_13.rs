@@ -213,7 +213,7 @@ fn main() {
 
     let mut camera = Camera::new(glm::vec3(0.0, 1.0, 3.0), 60.0, -90.0, -10.0);
 
-    let light_pos = glm::vec3(3.5, 2.0, -4.0);
+    let light_pos = glm::vec3(2.5, 1.5, -2.5);
     let cube_pos = glm::vec3(-1.0, -1.0, -1.0);
 
     let mut last_mouse_x = 0.0;
