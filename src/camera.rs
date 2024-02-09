@@ -22,6 +22,14 @@ impl Camera {
         cam
     }
 
+    pub fn position(&self) -> nalgebra_glm::Vec3 {
+        self.position
+    }
+
+    pub fn fov(&self) -> f32 {
+        self.fov
+    }
+
     pub fn look_at_matrix(&self) -> nalgebra_glm::Mat4 {
         nalgebra_glm::look_at(&self.position, &(self.position + self.front), &self.up)
     }
@@ -52,10 +60,6 @@ impl Camera {
         let translate = nalgebra_glm::translate(&nalgebra_glm::identity(), &(-self.position));
 
         rotation * translate
-    }
-
-    pub fn fov(&self) -> f32 {
-        self.fov
     }
 
     pub fn move_front(&mut self, speed: f32) {
