@@ -62,6 +62,45 @@ const CUBE_VERTICES: [f32; 288] = [
 const MOUSE_SENSITIVITY: f32 = 0.2;
 const CAMERA_SPEED: f32 = 4.0;
 
+unsafe fn load_texture<P>(file_path: P) -> u32
+where
+    P: AsRef<std::path::Path>,
+{
+    let img = ImageReader::open(file_path)
+        .unwrap()
+        .decode()
+        .unwrap()
+        .flipv();
+    let img_bytes = img.as_bytes();
+
+    // Create texture
+    let mut texture = 0;
+    gl::GenTextures(1, &mut texture);
+    gl::BindTexture(gl::TEXTURE_2D, texture);
+
+    // Texture parameters
+    gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
+    gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
+    gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+    gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
+
+    // Set texture pixel data
+    gl::TexImage2D(
+        gl::TEXTURE_2D,
+        0,
+        gl::RGB as i32,
+        img.width() as i32,
+        img.height() as i32,
+        0,
+        gl::RGBA,
+        gl::UNSIGNED_BYTE,
+        img_bytes.as_ptr() as *const c_void,
+    );
+    gl::GenerateMipmap(gl::TEXTURE_2D);
+
+    texture
+}
+
 fn process_events(
     events: &GlfwReceiver<(f64, WindowEvent)>,
     window: &mut PWindow,
@@ -212,41 +251,8 @@ fn main() {
         vao
     };
 
-    let diffuse_map = unsafe {
-        let img = ImageReader::open("assets/textures/container2.png")
-            .unwrap()
-            .decode()
-            .unwrap()
-            .flipv();
-        let img_bytes = img.as_bytes();
-
-        // Create texture
-        let mut texture = 0;
-        gl::GenTextures(1, &mut texture);
-        gl::BindTexture(gl::TEXTURE_2D, texture);
-
-        // Texture parameters
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
-
-        // Set texture pixel data
-        gl::TexImage2D(
-            gl::TEXTURE_2D,
-            0,
-            gl::RGB as i32,
-            img.width() as i32,
-            img.height() as i32,
-            0,
-            gl::RGBA,
-            gl::UNSIGNED_BYTE,
-            img_bytes.as_ptr() as *const c_void,
-        );
-        gl::GenerateMipmap(gl::TEXTURE_2D);
-
-        texture
-    };
+    let diffuse_map = unsafe { load_texture("assets/textures/container2.png") };
+    let specular_map = unsafe { load_texture("assets/textures/container2_specular.png") };
 
     let mut camera = Camera::new(glm::vec3(0.0, 1.0, 3.0), 60.0, -90.0, -10.0);
 
@@ -319,12 +325,7 @@ fn main() {
 
             // Material
             gl::Uniform1i(cube_shader.get_uniform_location("material.diffuse"), 0);
-            gl::Uniform3f(
-                cube_shader.get_uniform_location("material.specular"),
-                0.5,
-                0.5,
-                0.5,
-            );
+            gl::Uniform1i(cube_shader.get_uniform_location("material.specular"), 1);
             gl::Uniform1f(cube_shader.get_uniform_location("material.shininess"), 32.0);
 
             // Light
@@ -390,8 +391,12 @@ fn main() {
 
             // Draw cube
             cube_shader.use_program();
+
             gl::ActiveTexture(gl::TEXTURE0);
             gl::BindTexture(gl::TEXTURE_2D, diffuse_map);
+            gl::ActiveTexture(gl::TEXTURE1);
+            gl::BindTexture(gl::TEXTURE_2D, specular_map);
+
             gl::BindVertexArray(cube_vao);
             gl::DrawArrays(gl::TRIANGLES, 0, 36);
         }
