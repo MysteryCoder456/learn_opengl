@@ -72,7 +72,7 @@ const CUBE_POSITIONS: [glm::Vec3; 10] = [
 ];
 
 const MOUSE_SENSITIVITY: f32 = 0.2;
-const CAMERA_SPEED: f32 = 4.0;
+const CAMERA_SPEED: f32 = 5.0;
 
 unsafe fn load_texture<P>(file_path: P) -> u32
 where
@@ -179,12 +179,19 @@ fn main() {
         gl::Enable(gl::DEPTH_TEST);
     }
 
-    let cube_shader = unsafe {
-        Shader::new(
+    let (light_shader, cube_shader) = unsafe {
+        let light_shader = Shader::new(
+            "shaders/section_16/cube_vert.glsl",
+            "shaders/section_16/light_frag.glsl",
+        )
+        .unwrap();
+        let cube_shader = Shader::new(
             "shaders/section_16/cube_vert.glsl",
             "shaders/section_16/cube_frag.glsl",
         )
-        .unwrap()
+        .unwrap();
+
+        (light_shader, cube_shader)
     };
 
     let cube_vbo = unsafe {
@@ -200,6 +207,22 @@ fn main() {
         );
 
         vbo
+    };
+
+    let light_vao = unsafe {
+        let mut vao = 0;
+        gl::GenVertexArrays(1, &mut vao);
+        gl::BindVertexArray(vao);
+
+        gl::BindBuffer(gl::ARRAY_BUFFER, cube_vbo);
+        let f32_size = std::mem::size_of::<f32>() as i32;
+
+        // Position coords
+        gl::VertexAttribPointer(0, 3, gl::FLOAT, gl::FALSE, 8 * f32_size, std::ptr::null());
+        gl::EnableVertexAttribArray(0);
+
+        gl::BindVertexArray(0);
+        vao
     };
 
     let cube_vao = unsafe {
@@ -244,6 +267,7 @@ fn main() {
     let specular_map = unsafe { load_texture("assets/textures/container2_specular.png") };
 
     let mut camera = Camera::new(glm::vec3(0.0, 1.0, 3.0), 60.0, -90.0, -10.0);
+    let light_pos = glm::vec3(0.0, 0.0, -6.0);
 
     let mut last_mouse_x = 0.0;
     let mut last_mouse_y = 0.0;
@@ -275,6 +299,34 @@ fn main() {
             100.0,
         );
 
+        let mut light_model = glm::Mat4::identity();
+        light_model = glm::translate(&light_model, &light_pos);
+        light_model = glm::scale(&light_model, &glm::vec3(0.2, 0.2, 0.2));
+
+        // Light cube uniforms
+        unsafe {
+            light_shader.use_program();
+
+            gl::UniformMatrix4fv(
+                light_shader.get_uniform_location("model"),
+                1,
+                gl::FALSE,
+                glm::value_ptr(&light_model).as_ptr(),
+            );
+            gl::UniformMatrix4fv(
+                light_shader.get_uniform_location("view"),
+                1,
+                gl::FALSE,
+                glm::value_ptr(&view).as_ptr(),
+            );
+            gl::UniformMatrix4fv(
+                light_shader.get_uniform_location("projection"),
+                1,
+                gl::FALSE,
+                glm::value_ptr(&projection).as_ptr(),
+            );
+        }
+
         // Normal cube uniforms
         unsafe {
             cube_shader.use_program();
@@ -285,11 +337,10 @@ fn main() {
             gl::Uniform1f(cube_shader.get_uniform_location("material.shininess"), 32.0);
 
             // Light
-            gl::Uniform3f(
-                cube_shader.get_uniform_location("light.direction"),
-                -0.2,
-                -1.0,
-                -0.3,
+            gl::Uniform3fv(
+                cube_shader.get_uniform_location("light.position"),
+                1,
+                glm::value_ptr(&light_pos).as_ptr(),
             );
             gl::Uniform3f(
                 cube_shader.get_uniform_location("light.ambient"),
@@ -335,6 +386,11 @@ fn main() {
             gl::ClearColor(0.1, 0.1, 0.1, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
+            // Draw light source
+            light_shader.use_program();
+            gl::BindVertexArray(light_vao);
+            gl::DrawArrays(gl::TRIANGLES, 0, 36);
+
             // Draw party cubes
             cube_shader.use_program();
 
@@ -354,7 +410,7 @@ fn main() {
                 cube_model = glm::rotate(
                     &cube_model,
                     angle.to_radians(),
-                    &glm::vec3(0.2, 0.5, 0.4).normalize(),
+                    &glm::vec3(0.2, 0.7, 0.5).normalize(),
                 );
 
                 // Set uniform value

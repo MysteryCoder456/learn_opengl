@@ -7,7 +7,7 @@ struct Material {
 };
 
 struct Light {
-    vec3 direction;
+    vec3 position;
     vec3 ambient;
     vec3 diffuse;
     vec3 specular;
@@ -25,7 +25,7 @@ uniform vec3 cameraPos;
 
 void main() {
     vec3 norm = normalize(Normal);
-    vec3 lightDir = normalize(-light.direction);
+    vec3 lightDir = normalize(light.position - FragPos);
     vec3 cameraDir = normalize(cameraPos - FragPos);
 
     vec3 diffuseTexel = vec3(texture(material.diffuse, TexCoord));
