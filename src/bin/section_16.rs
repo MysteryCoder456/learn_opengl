@@ -267,7 +267,7 @@ fn main() {
     let specular_map = unsafe { load_texture("assets/textures/container2_specular.png") };
 
     let mut camera = Camera::new(glm::vec3(0.0, 1.0, 3.0), 60.0, -90.0, -10.0);
-    let light_pos = glm::vec3(0.0, 0.0, -6.0);
+    let light_pos = glm::vec3(0.0, 0.0, -4.0);
 
     let mut last_mouse_x = 0.0;
     let mut last_mouse_y = 0.0;
@@ -360,6 +360,9 @@ fn main() {
                 1.0,
                 1.0,
             );
+            gl::Uniform1f(cube_shader.get_uniform_location("light.constant"), 1.0);
+            gl::Uniform1f(cube_shader.get_uniform_location("light.linear"), 0.09);
+            gl::Uniform1f(cube_shader.get_uniform_location("light.quadratic"), 0.032);
 
             gl::Uniform3fv(
                 cube_shader.get_uniform_location("cameraPos"),
