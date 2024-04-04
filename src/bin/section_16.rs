@@ -3,7 +3,7 @@
 extern crate gl;
 extern crate glfw;
 
-use std::ffi::c_void;
+use std::{f32::consts::PI, ffi::c_void};
 
 use glfw::{
     Action, Context, CursorMode, GlfwReceiver, Key, OpenGlProfileHint, PWindow, WindowEvent,
@@ -267,7 +267,7 @@ fn main() {
     let specular_map = unsafe { load_texture("assets/textures/container2_specular.png") };
 
     let mut camera = Camera::new(glm::vec3(0.0, 1.0, 3.0), 60.0, -90.0, -10.0);
-    let light_pos = glm::vec3(0.0, 0.0, -4.0);
+    let mut light_pos = glm::vec3(0.0, 0.0, -4.0);
 
     let mut last_mouse_x = 0.0;
     let mut last_mouse_y = 0.0;
@@ -299,6 +299,7 @@ fn main() {
             100.0,
         );
 
+        light_pos = camera.position();
         let mut light_model = glm::Mat4::identity();
         light_model = glm::translate(&light_model, &light_pos);
         light_model = glm::scale(&light_model, &glm::vec3(0.2, 0.2, 0.2));
@@ -341,6 +342,15 @@ fn main() {
                 cube_shader.get_uniform_location("light.position"),
                 1,
                 glm::value_ptr(&light_pos).as_ptr(),
+            );
+            gl::Uniform3fv(
+                cube_shader.get_uniform_location("light.direction"),
+                1,
+                glm::value_ptr(&camera.front()).as_ptr(),
+            );
+            gl::Uniform1f(
+                cube_shader.get_uniform_location("light.cutOff"),
+                (PI / 10.).cos(),
             );
             gl::Uniform3f(
                 cube_shader.get_uniform_location("light.ambient"),
@@ -390,9 +400,9 @@ fn main() {
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
             // Draw light source
-            light_shader.use_program();
-            gl::BindVertexArray(light_vao);
-            gl::DrawArrays(gl::TRIANGLES, 0, 36);
+            //light_shader.use_program();
+            //gl::BindVertexArray(light_vao);
+            //gl::DrawArrays(gl::TRIANGLES, 0, 36);
 
             // Draw party cubes
             cube_shader.use_program();

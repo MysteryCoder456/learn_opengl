@@ -26,6 +26,10 @@ impl Camera {
         self.position
     }
 
+    pub fn front(&self) -> nalgebra_glm::Vec3 {
+        self.front
+    }
+
     pub fn fov(&self) -> f32 {
         self.fov
     }

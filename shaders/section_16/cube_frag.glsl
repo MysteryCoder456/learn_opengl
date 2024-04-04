@@ -8,6 +8,8 @@ struct Material {
 
 struct Light {
     vec3 position;
+    vec3 direction;
+    float cutOff;
 
     vec3 ambient;
     vec3 diffuse;
@@ -33,26 +35,35 @@ void main() {
     vec3 lightDir = normalize(light.position - FragPos);
     vec3 cameraDir = normalize(cameraPos - FragPos);
 
-    vec3 diffuseTexel = vec3(texture(material.diffuse, TexCoord));
-    vec3 specularTexel = vec3(texture(material.specular, TexCoord));
-
+    // Light strength attenuation
     float lightDist = distance(light.position, FragPos);
     float attenuation = 1.0 / (light.constant +
                 light.linear * lightDist +
                 light.quadratic * pow(lightDist, 2.0));
 
-    // Ambient lighting
-    vec3 ambient = light.ambient * diffuseTexel;
+    float theta = dot(lightDir, normalize(-light.direction));
+    vec3 result;
 
-    // Diffuse lighting
-    float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = light.diffuse * diff * diffuseTexel;
+    if (theta >= light.cutOff) {
+        vec3 diffuseTexel = vec3(texture(material.diffuse, TexCoord));
+        vec3 specularTexel = vec3(texture(material.specular, TexCoord));
 
-    // Specular lighting
-    vec3 reflectDir = reflect(-lightDir, norm);
-    float spec = pow(max(dot(reflectDir, cameraDir), 0.0), material.shininess);
-    vec3 specular = light.specular * spec * specularTexel;
+        // Ambient lighting
+        vec3 ambient = light.ambient * diffuseTexel;
 
-    vec3 result = (ambient + diffuse + specular) * attenuation;
+        // Diffuse lighting
+        float diff = max(dot(norm, lightDir), 0.0);
+        vec3 diffuse = light.diffuse * diff * diffuseTexel;
+
+        // Specular lighting
+        vec3 reflectDir = reflect(-lightDir, norm);
+        float spec = pow(max(dot(reflectDir, cameraDir), 0.0), material.shininess);
+        vec3 specular = light.specular * spec * specularTexel;
+
+        result = (ambient + diffuse + specular) * attenuation;
+    } else {
+        result = light.ambient * attenuation * vec3(texture(material.diffuse, TexCoord));
+    }
+
     FragColor = vec4(result, 1.0);
 }
