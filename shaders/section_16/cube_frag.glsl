@@ -9,8 +9,8 @@ struct Material {
 struct Light {
     vec3 position;
     vec3 direction;
-    float innerCutOff;
-    float outerCutOff;
+    float innerCutoff;
+    float outerCutoff;
 
     vec3 ambient;
     vec3 diffuse;
@@ -47,7 +47,7 @@ void main() {
 
     // Spotlight effect
     float theta = dot(lightDir, normalize(-light.direction));
-    float intensity = clamp((theta - light.outerCutOff) / (light.innerCutOff - light.outerCutOff), 0.0, 1.0);
+    float intensity = clamp((theta - light.outerCutoff) / (light.innerCutoff - light.outerCutoff), 0.0, 1.0);
 
     // Ambient lighting
     vec3 ambient = light.ambient * diffuseTexel;

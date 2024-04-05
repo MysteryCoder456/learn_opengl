@@ -349,11 +349,11 @@ fn main() {
                 glm::value_ptr(&camera.front()).as_ptr(),
             );
             gl::Uniform1f(
-                cube_shader.get_uniform_location("light.innerCutOff"),
+                cube_shader.get_uniform_location("light.innerCutoff"),
                 (PI / 12.).cos(),
             );
             gl::Uniform1f(
-                cube_shader.get_uniform_location("light.outerCutOff"),
+                cube_shader.get_uniform_location("light.outerCutoff"),
                 (PI / 10.).cos(),
             );
             gl::Uniform3f(
