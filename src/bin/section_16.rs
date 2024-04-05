@@ -349,7 +349,11 @@ fn main() {
                 glm::value_ptr(&camera.front()).as_ptr(),
             );
             gl::Uniform1f(
-                cube_shader.get_uniform_location("light.cutOff"),
+                cube_shader.get_uniform_location("light.innerCutOff"),
+                (PI / 12.).cos(),
+            );
+            gl::Uniform1f(
+                cube_shader.get_uniform_location("light.outerCutOff"),
                 (PI / 10.).cos(),
             );
             gl::Uniform3f(
@@ -371,8 +375,8 @@ fn main() {
                 1.0,
             );
             gl::Uniform1f(cube_shader.get_uniform_location("light.constant"), 1.0);
-            gl::Uniform1f(cube_shader.get_uniform_location("light.linear"), 0.09);
-            gl::Uniform1f(cube_shader.get_uniform_location("light.quadratic"), 0.032);
+            gl::Uniform1f(cube_shader.get_uniform_location("light.linear"), 0.07);
+            gl::Uniform1f(cube_shader.get_uniform_location("light.quadratic"), 0.017);
 
             gl::Uniform3fv(
                 cube_shader.get_uniform_location("cameraPos"),
