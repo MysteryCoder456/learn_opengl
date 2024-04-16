@@ -10,6 +10,7 @@ path = "src/lib.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+assimp = "0.3"
 gl = "0.14"
 glfw = "0.54"
 image = "0.24"
